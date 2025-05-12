@@ -22,17 +22,15 @@
 #include "DebounceSwitchRK.h"
 #include "eeprom_helper.h"
 
-
 //
 // Constants
 //
-static constexpr uint8_t EEPROM_DATA_ADDRESS        {0x50};
+static constexpr uint8_t EEPROM_DATA_ADDRESS{0x50};
 
-static constexpr int32_t THRESHOLD_LOW_PERCENT      {50L};
-static constexpr int32_t THRESHOLD_HIGH_PERCENT     {80L};
-static constexpr uint32_t LED_DISPLAY_PERIOD_MS     {10000UL};
-static constexpr uint8_t COLOR_MAX_VAL              {255};
-
+static constexpr int32_t THRESHOLD_LOW_PERCENT{50L};
+static constexpr int32_t THRESHOLD_HIGH_PERCENT{80L};
+static constexpr uint32_t LED_DISPLAY_PERIOD_MS{10000UL};
+static constexpr uint8_t COLOR_MAX_VAL{255};
 
 //
 // Global variables
@@ -40,10 +38,12 @@ static constexpr uint8_t COLOR_MAX_VAL              {255};
 static Logger monitorOneLog("MonitorOne");
 static CellularSignal Sig;
 static Timer *RestoreTmr;
-static MonitorOneCardFunction callInit = []() {
+static MonitorOneCardFunction callInit = []()
+{
     return 0;
 };
-static MonitorOneCardFunction callLoop = []() {
+static MonitorOneCardFunction callLoop = []()
+{
     return 0;
 };
 
@@ -58,7 +58,6 @@ static void defaultLedBehaviour()
     RGB.control(false);
 }
 
-
 /**
  * @brief Handle short button press on Monitor One
  *
@@ -70,7 +69,7 @@ static void defaultLedBehaviour()
  *
  * @return None
  */
-static void buttonHandler(DebounceSwitchState* switchState, void *context)
+static void buttonHandler(DebounceSwitchState *switchState, void *context)
 {
     // See https://github.com/rickkas7/DebounceSwitchRK for more information
     // Some example DebouncePressState states:
@@ -78,10 +77,10 @@ static void buttonHandler(DebounceSwitchState* switchState, void *context)
     //           Double tap (< 3s):  PRESS_START -> SHORT -> RELEASED -> PRESS_START -> SHORT -> RELEASED -> TAP
     //    Long press (> 3s, < 10s):  PRESS_START -> PROGRESS -> LONG -> RELEASED
     //    Very long press  (> 10s):  PRESS_START -> PROGRESS -> VERY_LONG -> RELEASED
-    if( DebouncePressState::SHORT == switchState->getPressState() )
+    if (DebouncePressState::SHORT == switchState->getPressState())
     {
         // Use EdgeCellular service to get the cellular signal strength
-        if(!EdgeCellular::instance().getSignal(Sig))
+        if (!EdgeCellular::instance().getSignal(Sig))
         {
             auto pct = static_cast<int32_t>(Sig.getStrength());
             monitorOneLog.trace("Cell Strength = %ld", pct);
@@ -90,22 +89,22 @@ static void buttonHandler(DebounceSwitchState* switchState, void *context)
             RGB.control(true);
 
             // Display the appropriate colour based on the signal strength
-            if( (pct >= 0) && (pct < THRESHOLD_LOW_PERCENT) )
+            if ((pct >= 0) && (pct < THRESHOLD_LOW_PERCENT))
             {
                 // Display RED for 10s
-                RGB.color(COLOR_MAX_VAL, 0, 0);                 // [R, G, B]
+                RGB.color(COLOR_MAX_VAL, 0, 0); // [R, G, B]
                 RestoreTmr->start();
             }
-            else if( (pct >= THRESHOLD_LOW_PERCENT) && (pct < THRESHOLD_HIGH_PERCENT) )
+            else if ((pct >= THRESHOLD_LOW_PERCENT) && (pct < THRESHOLD_HIGH_PERCENT))
             {
                 // Display YELLOW for 10s
-                RGB.color(COLOR_MAX_VAL, COLOR_MAX_VAL, 0);     // [R, G, B]
+                RGB.color(COLOR_MAX_VAL, COLOR_MAX_VAL, 0); // [R, G, B]
                 RestoreTmr->start();
             }
-            else if( pct >= THRESHOLD_HIGH_PERCENT )
+            else if (pct >= THRESHOLD_HIGH_PERCENT)
             {
                 // Display GREEN for 10s
-                RGB.color(0, COLOR_MAX_VAL, 0);                 // [R, G, B]
+                RGB.color(0, COLOR_MAX_VAL, 0); // [R, G, B]
                 RestoreTmr->start();
             }
             else
@@ -142,7 +141,6 @@ static int commonMonitorOneSetup()
     return SYSTEM_ERROR_NONE;
 }
 
-
 /**
  * @brief User setup function for Monitor Edge
  *
@@ -154,19 +152,22 @@ int user_init()
 {
     CHECK(commonMonitorOneSetup());
 
-    ExpansionEeprom eeprom {};
-    auto ret = readEepromBytes(Wire, EEPROM_DATA_ADDRESS, 0, (uint8_t*)&eeprom, sizeof(eeprom));
-    if (ret || !isEeepromValid(eeprom)) {
+    ExpansionEeprom eeprom{};
+    auto ret = readEepromBytes(Wire, EEPROM_DATA_ADDRESS, 0, (uint8_t *)&eeprom, sizeof(eeprom));
+    if (ret || !isEeepromValid(eeprom))
+    {
         monitorOneLog.error("This is not the card you are looking for");
         return SYSTEM_ERROR_NOT_SUPPORTED;
     }
 
-    if (!strcmp(eeprom.sku, MONITOREDGE_IOEX_SKU)) {
-        monitorOneLog.info("Detected a basic IO expansion card with RS-485 and CAN bus");
+    if (!strcmp(eeprom.sku, MONITOREDGE_IOEX_SKU))
+    {
+        monitorOneLog.error("Detected a basic IO expansion card with RS-485 and CAN bus");
         callInit = expanderIoInit;
         callLoop = expanderIoLoop;
     }
-    else if (!strcmp(eeprom.sku, MONITOREDGE_PROTO_SKU)) {
+    else if (!strcmp(eeprom.sku, MONITOREDGE_PROTO_SKU))
+    {
         monitorOneLog.info("Detected a basic prototype expansion card");
         // Do proto card stuff here or reassign callInit to your init function
     }
