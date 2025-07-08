@@ -23,10 +23,14 @@
 
 #define NUM_SENSORS 4
 
+// TODO: POST telemetry payloads
+
+// TODO: POST locations payloads
+
 const std::chrono::milliseconds logFrequency = 30s;
 long lastLogTimestamp = 0;
 
-const std::chrono::milliseconds sensiorFrequency = 5s;
+const std::chrono::milliseconds sensorFrequency = 5s;
 long lastSensorTimestamp = 0;
 
 // Modbus globals
@@ -61,7 +65,24 @@ const char *labelsTemp[NUM_SENSORS] = {" *C @15cm", " *C @30cm", " *C @45cm", " 
 const char *labelsDEP[NUM_SENSORS] = {"DEP @15cm", "DEP @30cm", "DEP @45cm", "DEP @60cm"};
 const char *labelsRAW[NUM_SENSORS] = {"RAW @15cm", "RAW @30cm", "RAW @45cm", "RAW @60cm"};
 
+// https://publications.metergroup.com/Manuals/20820_TEROS54_Manual_Web.pdf
+// VWC range is dependent on the media the sensor is calibrated to
+// TODO: how can we change the sensor calibration
+// TODO: where can we get values for different soil types?
+// The manual (pg27) says the sensor converts raw DEP to VWC using a conversion
+// equation specific to the substrate; how can we set the substrate type?
+// Allegedly their standard equation is suitable for most soils
+// they offer a service to calibrate to your specific soil for a fee (unknown cost)
+// they also advertise a method to locally calibrate:
+// https://publications.metergroup.com/Sales%20and%20Support/METER%20Environment/Website%20Articles/Method_b-_soil_specific_calibrations_for_meter_soil_moisture_sensors.pdf
+
+// https://extension.okstate.edu/fact-sheets/understanding-soil-water-content-and-thresholds-for-irrigation-management.html
+// lower (saturated) threshold is field capacity
+
 double outputVWC[NUM_SENSORS] = {0.0};
+
+// The manual (pg27) says temp is accurate when buried in soil (but air measurements
+// are within reason)
 double outputTemp[NUM_SENSORS] = {0.0};
 double outputDEP[NUM_SENSORS] = {0.0};
 double outputRAW[NUM_SENSORS] = {0.0};
@@ -130,7 +151,7 @@ void loop()
         lastLogTimestamp = millis();
     }
 
-    if (millis() - lastSensorTimestamp > sensiorFrequency.count())
+    if (millis() - lastSensorTimestamp > sensorFrequency.count())
     {
         Log.error("polling sensors");
         lastSensorTimestamp = millis();
@@ -223,6 +244,11 @@ int readSensorValue(int regAddr, const char *label, double *output)
 
     // Log.error("%s reading sensor register: %d", label, regAddr);
     modbusErrorCode = -1;
+
+    // https://publications.metergroup.com/Manuals/20820_TEROS54_Manual_Web.pdf
+    // TODO: pg 22 says 500 min to 800 max ms measurement durations;
+    // how do we tell the sensor how long to read for? Or is this outside
+    // our scope and we simply ask for the value
     // Minimum 50ms delay between commands
     delay(50);
     modbusErrorCode = node.readInputRegisters(regAddr, 1);
